@@ -1,4 +1,5 @@
 import customtkinter as ctk
+from tkinter import filedialog
 import database
 from datetime import date
 import matplotlib.pyplot as plt
@@ -12,8 +13,8 @@ class Momentum(ctk.CTk):
     def __init__(self):
         super().__init__()
 
-        self.title("Momentum")
-        self.geometry("1000x600")
+        self.title("Momentum v3.0")
+        self.geometry("1000x700")
 
         # Global Timer State Variables
         self.timer_running = False
@@ -27,25 +28,50 @@ class Momentum(ctk.CTk):
         self.logo = ctk.CTkLabel(self.sidebar, text="Momentum", font=("Arial", 24, "bold"))
         self.logo.pack(pady=20)
 
+        # Core Tools
         self.dashboard_btn = ctk.CTkButton(self.sidebar, text="Dashboard", command=self.show_dashboard)
-        self.dashboard_btn.pack(pady=10, padx=10)
+        self.dashboard_btn.pack(pady=5, padx=10)
 
         self.tasks_btn = ctk.CTkButton(self.sidebar, text="Tasks", command=self.show_tasks)
-        self.tasks_btn.pack(pady=10, padx=10)
+        self.tasks_btn.pack(pady=5, padx=10)
 
         self.habits_btn = ctk.CTkButton(self.sidebar, text="Habits", command=self.show_habits)
-        self.habits_btn.pack(pady=10, padx=10)
+        self.habits_btn.pack(pady=5, padx=10)
+
+        self.goals_btn = ctk.CTkButton(self.sidebar, text="Goals", command=self.show_goals)
+        self.goals_btn.pack(pady=5, padx=10)
 
         self.timer_btn = ctk.CTkButton(self.sidebar, text="Pomodoro", command=self.show_timer)
-        self.timer_btn.pack(pady=10, padx=10)
+        self.timer_btn.pack(pady=5, padx=10)
+
+        # Version 3.0 Tools
+        ctk.CTkLabel(self.sidebar, text="Advanced", text_color="gray", font=("Arial", 12)).pack(pady=(20, 5))
+
+        self.planner_btn = ctk.CTkButton(self.sidebar, text="Study Planner", fg_color="#636EFA", command=self.show_planner)
+        self.planner_btn.pack(pady=5, padx=10)
+
+        self.focus_btn = ctk.CTkButton(self.sidebar, text="Focus Mode", fg_color="#EF553B", command=self.show_focus)
+        self.focus_btn.pack(pady=5, padx=10)
+
+        self.settings_btn = ctk.CTkButton(self.sidebar, text="Settings", fg_color="transparent", border_width=1, command=self.show_settings)
+        self.settings_btn.pack(side="bottom", pady=20, padx=10)
 
         # --- Main Content Display Area ---
         self.main_frame = ctk.CTkFrame(self)
         self.main_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
 
         self.show_dashboard()
+        self.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def on_closing(self):
+        if self.timer_id:
+            self.after_cancel(self.timer_id)
+        plt.close('all')
+        self.quit()
+        self.destroy()
 
     def clear_frame(self):
+        plt.close('all')
         for widget in self.main_frame.winfo_children():
             widget.destroy()
 
@@ -220,17 +246,192 @@ class Momentum(ctk.CTk):
         self.load_habits_from_db()
 
     # ==========================================
-    # POMODORO TIMER VIEW
+    # GOALS VIEW
+    # ==========================================
+    def show_goals(self):
+        self.clear_frame()
+        title = ctk.CTkLabel(self.main_frame, text="Long-Term Goals", font=("Arial", 28, "bold"))
+        title.pack(pady=20)
+
+        input_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
+        input_frame.pack(pady=10)
+
+        self.goal_name_entry = ctk.CTkEntry(input_frame, width=200, placeholder_text="Goal Name (e.g. Read Books)")
+        self.goal_name_entry.pack(side="left", padx=5)
+
+        self.goal_target_entry = ctk.CTkEntry(input_frame, width=100, placeholder_text="Target #")
+        self.goal_target_entry.pack(side="left", padx=5)
+
+        self.goal_deadline_entry = ctk.CTkEntry(input_frame, width=120, placeholder_text="Deadline")
+        self.goal_deadline_entry.pack(side="left", padx=5)
+
+        add_btn = ctk.CTkButton(input_frame, text="Add Goal", width=100, command=self.ui_add_goal)
+        add_btn.pack(side="left", padx=5)
+
+        self.goals_container = ctk.CTkScrollableFrame(self.main_frame, width=700, height=350)
+        self.goals_container.pack(pady=20, fill="both", expand=True)
+
+        self.load_goals_from_db()
+
+    def load_goals_from_db(self):
+        for widget in self.goals_container.winfo_children():
+            widget.destroy()
+
+        all_goals = database.get_goals()
+
+        for goal_id, name, target, current, deadline in all_goals:
+            row_frame = ctk.CTkFrame(self.goals_container)
+            row_frame.pack(fill="x", pady=10, padx=10)
+
+            info_frame = ctk.CTkFrame(row_frame, fg_color="transparent")
+            info_frame.pack(fill="x", padx=10, pady=5)
+            
+            ctk.CTkLabel(info_frame, text=name, font=("Arial", 16, "bold")).pack(side="left")
+            ctk.CTkLabel(info_frame, text=f"Due: {deadline}", text_color="gray").pack(side="right")
+
+            progress_val = current / target if target > 0 else 0
+            progress_bar = ctk.CTkProgressBar(row_frame, width=500, height=15, progress_color="#2E8B57")
+            progress_bar.set(progress_val)
+            progress_bar.pack(pady=5)
+
+            control_frame = ctk.CTkFrame(row_frame, fg_color="transparent")
+            control_frame.pack(fill="x", padx=10, pady=5)
+
+            ctk.CTkLabel(control_frame, text=f"Progress: {current} / {target}", font=("Arial", 14)).pack(side="left")
+
+            add_1_btn = ctk.CTkButton(
+                control_frame, text="+1", width=50, 
+                command=lambda g_id=goal_id: self.ui_update_goal(g_id, 1)
+            )
+            add_1_btn.pack(side="left", padx=20)
+
+            delete_btn = ctk.CTkButton(
+                control_frame, text="Delete", width=60, fg_color="#A83232", hover_color="#822525",
+                command=lambda g_id=goal_id: self.ui_delete_goal(g_id)
+            )
+            delete_btn.pack(side="right")
+
+    def ui_add_goal(self):
+        name = self.goal_name_entry.get().strip()
+        target_str = self.goal_target_entry.get().strip()
+        deadline = self.goal_deadline_entry.get().strip()
+
+        if name and target_str.isdigit():
+            database.add_goal(name, int(target_str), deadline)
+            self.goal_name_entry.delete(0, "end")
+            self.goal_target_entry.delete(0, "end")
+            self.goal_deadline_entry.delete(0, "end")
+            self.load_goals_from_db()
+
+    def ui_update_goal(self, goal_id, amount):
+        database.update_goal_progress(goal_id, amount)
+        self.load_goals_from_db()
+
+    def ui_delete_goal(self, goal_id):
+        database.delete_goal(goal_id)
+        self.load_goals_from_db()
+
+    # ==========================================
+    # AI STUDY PLANNER (VERSION 3.0)
+    # ==========================================
+    def show_planner(self):
+        self.clear_frame()
+        
+        title = ctk.CTkLabel(self.main_frame, text="AI Study Planner", font=("Arial", 28, "bold"))
+        title.pack(pady=20)
+        
+        ctk.CTkLabel(self.main_frame, text="Enter a subject or goal to generate an automated study breakdown:", font=("Arial", 16)).pack(pady=10)
+        
+        self.planner_entry = ctk.CTkEntry(self.main_frame, width=400, placeholder_text="e.g., Python Programming, History Test...")
+        self.planner_entry.pack(pady=10)
+        
+        generate_btn = ctk.CTkButton(self.main_frame, text="Generate Plan", fg_color="#636EFA", hover_color="#4F58C9", command=self.generate_plan)
+        generate_btn.pack(pady=10)
+        
+        self.plan_feedback = ctk.CTkLabel(self.main_frame, text="", text_color="#2E8B57", font=("Arial", 14))
+        self.plan_feedback.pack(pady=20)
+
+    def generate_plan(self):
+        subject = self.planner_entry.get().strip()
+        if subject:
+            # Procedurally generate a step-by-step pipeline for the requested subject
+            tasks = [
+                f"Research the core fundamentals of {subject}",
+                f"Watch a 30-minute tutorial on {subject}",
+                f"Complete hands-on practice exercises for {subject}",
+                f"Review and summarize notes for {subject}"
+            ]
+            for t in tasks:
+                database.add_task(t)
+            
+            self.planner_entry.delete(0, "end")
+            self.plan_feedback.configure(text=f"Successfully built curriculum. 4 new tasks for '{subject}' added to Tasks tab!")
+
+    # ==========================================
+    # SETTINGS & DATA BACKUP (VERSION 3.0)
+    # ==========================================
+    def show_settings(self):
+        self.clear_frame()
+        
+        title = ctk.CTkLabel(self.main_frame, text="Settings & Backup", font=("Arial", 28, "bold"))
+        title.pack(pady=20)
+        
+        ctk.CTkLabel(self.main_frame, text="Export your database to a JSON file, or restore from a previous backup.", font=("Arial", 14)).pack(pady=20)
+        
+        export_btn = ctk.CTkButton(self.main_frame, text="Export Data", width=200, command=self.run_export)
+        export_btn.pack(pady=10)
+        
+        import_btn = ctk.CTkButton(self.main_frame, text="Restore Data", width=200, fg_color="#A83232", hover_color="#822525", command=self.run_import)
+        import_btn.pack(pady=10)
+        
+        self.settings_feedback = ctk.CTkLabel(self.main_frame, text="", font=("Arial", 14))
+        self.settings_feedback.pack(pady=20)
+        
+    def run_export(self):
+        filepath = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON Files", "*.json")])
+        if filepath:
+            database.export_data(filepath)
+            self.settings_feedback.configure(text=f"Data exported successfully to:\n{filepath}", text_color="#2E8B57")
+
+    def run_import(self):
+        filepath = filedialog.askopenfilename(filetypes=[("JSON Files", "*.json")])
+        if filepath:
+            database.import_data(filepath)
+            self.settings_feedback.configure(text=f"Data restored successfully from:\n{filepath}", text_color="#2E8B57")
+
+    # ==========================================
+    # TIMER & FOCUS MODE (VERSION 3.0)
     # ==========================================
     def show_timer(self):
         self.clear_frame()
         title = ctk.CTkLabel(self.main_frame, text="Pomodoro Timer", font=("Arial", 28, "bold"))
         title.pack(pady=20)
+        self.render_timer_ui(font_size=80, button_width=100)
 
+    def show_focus(self):
+        self.clear_frame()
+        # Collapse the sidebar completely for distraction-free environment
+        self.sidebar.pack_forget()
+        
+        exit_btn = ctk.CTkButton(self.main_frame, text="Exit Focus Mode", width=120, fg_color="#A83232", hover_color="#822525", command=self.exit_focus)
+        exit_btn.pack(pady=10, anchor="ne", padx=20)
+        
+        title = ctk.CTkLabel(self.main_frame, text="Focus Mode", font=("Arial", 36, "bold"), text_color="#EF553B")
+        title.pack(pady=(40, 10))
+        
+        self.render_timer_ui(font_size=140, button_width=150)
+
+    def exit_focus(self):
+        # Restore the sidebar and route back to the normal view
+        self.sidebar.pack(side="left", fill="y")
+        self.show_timer()
+
+    def render_timer_ui(self, font_size, button_width):
+        """Reusable rendering block for both normal and Focus Mode timers."""
         mins, secs = divmod(self.time_left, 60)
         time_string = f"{mins:02d}:{secs:02d}" if self.time_left > 0 else "Time's Up!"
 
-        self.time_label = ctk.CTkLabel(self.main_frame, text=time_string, font=("Arial", 80, "bold"))
+        self.time_label = ctk.CTkLabel(self.main_frame, text=time_string, font=("Arial", font_size, "bold"))
         self.time_label.pack(pady=40)
 
         btn_frame = ctk.CTkFrame(self.main_frame, fg_color="transparent")
@@ -240,11 +441,11 @@ class Momentum(ctk.CTk):
         btn_color = "#A83232" if self.timer_running else ["#3B8ED0", "#1F6AA5"]
 
         self.start_btn = ctk.CTkButton(
-            btn_frame, text=btn_text, width=100, fg_color=btn_color, command=self.toggle_timer
+            btn_frame, text=btn_text, width=button_width, height=40, font=("Arial", 16), fg_color=btn_color, command=self.toggle_timer
         )
         self.start_btn.pack(side="left", padx=10)
 
-        reset_btn = ctk.CTkButton(btn_frame, text="Reset", width=100, command=self.reset_timer)
+        reset_btn = ctk.CTkButton(btn_frame, text="Reset", width=button_width, height=40, font=("Arial", 16), command=self.reset_timer)
         reset_btn.pack(side="left", padx=10)
 
     def toggle_timer(self):

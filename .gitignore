@@ -1,0 +1,10 @@
+# PyInstaller Folders
+build/
+dist/
+*.spec
+
+# Python Caches
+__pycache__/
+
+# Private Database
+momentum.db
