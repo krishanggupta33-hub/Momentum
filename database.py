@@ -38,6 +38,46 @@ def create_tables():
         )
     """)
 
+    # NEW: Profile table for Gamification XP
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS profile (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            xp INTEGER DEFAULT 0,
+            level INTEGER DEFAULT 1
+        )
+    """)
+
+    # Initialize the profile row if it doesn't exist
+    cursor.execute("SELECT COUNT(*) FROM profile")
+    if cursor.fetchone()[0] == 0:
+        cursor.execute("INSERT INTO profile (xp, level) VALUES (0, 1)")
+
+    conn.commit()
+    conn.close()
+
+# ==========================================
+# GAMIFICATION LOGIC (NEW)
+# ==========================================
+def get_profile():
+    conn = connect()
+    cursor = conn.cursor()
+    cursor.execute("SELECT xp, level FROM profile WHERE id = 1")
+    xp, level = cursor.fetchone()
+    conn.close()
+    return xp, level
+
+def add_xp(amount):
+    conn = connect()
+    cursor = conn.cursor()
+    
+    cursor.execute("SELECT xp FROM profile WHERE id = 1")
+    current_xp = cursor.fetchone()[0]
+    
+    new_xp = current_xp + amount
+    # Mathematical Leveling System: 1 Level per 100 XP
+    new_level = (new_xp // 100) + 1 
+    
+    cursor.execute("UPDATE profile SET xp = ?, level = ? WHERE id = 1", (new_xp, new_level))
     conn.commit()
     conn.close()
 
@@ -69,16 +109,22 @@ def delete_task(task_id):
 def complete_task(task_id):
     conn = connect()
     cursor = conn.cursor()
-    cursor.execute("""
-        UPDATE tasks 
-        SET completed = CASE 
-            WHEN completed = 1 THEN 0 
-            ELSE 1 
-        END 
-        WHERE id = ?
-    """, (task_id,))
-    conn.commit()
-    conn.close()
+    
+    # Check if we are completing or uncompleting to award XP properly
+    cursor.execute("SELECT completed FROM tasks WHERE id = ?",(task_id,))
+    is_completed = cursor.fetchone()[0]
+    
+    if is_completed == 0: # Turning it ON
+        cursor.execute("UPDATE tasks SET completed = 1 WHERE id = ?", (task_id,))
+        conn.commit()
+        conn.close()
+        add_xp(10) # 10 XP for a task
+        return True
+    else: # Turning it OFF
+        cursor.execute("UPDATE tasks SET completed = 0 WHERE id = ?", (task_id,))
+        conn.commit()
+        conn.close()
+        return False
 
 # ==========================================
 # HABITS LOGIC
@@ -115,14 +161,18 @@ def check_in_habit(habit_id):
     cursor.execute("SELECT streak, last_completed FROM habits WHERE id = ?", (habit_id,))
     result = cursor.fetchone()
     
+    awarded_xp = False
+    
     if result:
         current_streak, last_completed = result
         if last_completed == today:
             new_streak = current_streak
         elif last_completed == yesterday:
             new_streak = current_streak + 1
+            awarded_xp = True
         else:
             new_streak = 1
+            awarded_xp = True
             
         cursor.execute("""
             UPDATE habits 
@@ -132,6 +182,9 @@ def check_in_habit(habit_id):
         
     conn.commit()
     conn.close()
+    
+    if awarded_xp:
+        add_xp(15) # 15 XP for habit consistency
 
 # ==========================================
 # GOALS LOGIC
@@ -160,16 +213,23 @@ def update_goal_progress(goal_id, amount_to_add):
     cursor.execute("SELECT current_amount, target_amount FROM goals WHERE id = ?", (goal_id,))
     result = cursor.fetchone()
     
+    awarded_xp = False
+    
     if result:
         current, target = result
         new_amount = current + amount_to_add
         if new_amount > target:
             new_amount = target 
+        elif new_amount > current:
+            awarded_xp = True
             
         cursor.execute("UPDATE goals SET current_amount = ? WHERE id = ?", (new_amount, goal_id))
         
     conn.commit()
     conn.close()
+    
+    if awarded_xp:
+        add_xp(20) # 20 XP for long-term goal progress
 
 def delete_goal(goal_id):
     conn = connect()
@@ -195,10 +255,9 @@ def get_task_stats():
     return completed, pending
 
 # ==========================================
-# DATA BACKUP & RESTORE LOGIC (VERSION 3.0)
+# DATA BACKUP & RESTORE LOGIC
 # ==========================================
 def export_data(filepath):
-    """Serializes all SQLite tables into a JSON file."""
     conn = connect()
     cursor = conn.cursor()
     
@@ -211,14 +270,17 @@ def export_data(filepath):
     cursor.execute("SELECT id, goal_name, target_amount, current_amount, deadline FROM goals")
     goals = [{"id": r[0], "name": r[1], "target": r[2], "current": r[3], "deadline": r[4]} for r in cursor.fetchall()]
     
+    cursor.execute("SELECT xp, level FROM profile WHERE id = 1")
+    p_data = cursor.fetchone()
+    profile = {"xp": p_data[0], "level": p_data[1]}
+    
     conn.close()
     
-    data = {"tasks": tasks, "habits": habits, "goals": goals}
+    data = {"tasks": tasks, "habits": habits, "goals": goals, "profile": profile}
     with open(filepath, 'w') as f:
         json.dump(data, f, indent=4)
 
 def import_data(filepath):
-    """Wipes current database and restores from a JSON backup file."""
     with open(filepath, 'r') as f:
         data = json.load(f)
         
@@ -237,6 +299,9 @@ def import_data(filepath):
         
     for g in data.get("goals", []):
         cursor.execute("INSERT INTO goals (goal_name, target_amount, current_amount, deadline) VALUES (?, ?, ?, ?)", (g["name"], g["target"], g["current"], g["deadline"]))
+        
+    p = data.get("profile", {"xp": 0, "level": 1})
+    cursor.execute("UPDATE profile SET xp = ?, level = ? WHERE id = 1", (p["xp"], p["level"]))
         
     conn.commit()
     conn.close()
