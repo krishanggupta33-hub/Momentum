@@ -1,6 +1,8 @@
 import customtkinter as ctk
 import database
-from datetime import date  # NEW: Needed to check today's date in the UI
+from datetime import date
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
 ctk.set_appearance_mode("dark")
 ctk.set_default_color_theme("blue")
@@ -22,11 +24,7 @@ class Momentum(ctk.CTk):
         self.sidebar = ctk.CTkFrame(self, width=200)
         self.sidebar.pack(side="left", fill="y")
 
-        self.logo = ctk.CTkLabel(
-            self.sidebar,
-            text="Momentum",
-            font=("Arial", 24, "bold")
-        )
+        self.logo = ctk.CTkLabel(self.sidebar, text="Momentum", font=("Arial", 24, "bold"))
         self.logo.pack(pady=20)
 
         self.dashboard_btn = ctk.CTkButton(self.sidebar, text="Dashboard", command=self.show_dashboard)
@@ -35,7 +33,6 @@ class Momentum(ctk.CTk):
         self.tasks_btn = ctk.CTkButton(self.sidebar, text="Tasks", command=self.show_tasks)
         self.tasks_btn.pack(pady=10, padx=10)
 
-        # NEW: Habits Navigation Button
         self.habits_btn = ctk.CTkButton(self.sidebar, text="Habits", command=self.show_habits)
         self.habits_btn.pack(pady=10, padx=10)
 
@@ -57,9 +54,40 @@ class Momentum(ctk.CTk):
     # ==========================================
     def show_dashboard(self):
         self.clear_frame()
+        
         title = ctk.CTkLabel(self.main_frame, text="Dashboard", font=("Arial", 28, "bold"))
         title.pack(pady=20)
-        ctk.CTkLabel(self.main_frame, text="Welcome to Momentum Version 2.0!", font=("Arial", 16)).pack()
+
+        completed, pending = database.get_task_stats()
+
+        if completed == 0 and pending == 0:
+            ctk.CTkLabel(
+                self.main_frame, 
+                text="No tasks yet. Add some tasks to see your stats!", 
+                font=("Arial", 16)
+            ).pack(pady=40)
+            return
+
+        fig, ax = plt.subplots(figsize=(5, 5), facecolor='#212121')
+        ax.set_facecolor('#212121')
+
+        labels = ['Completed', 'Pending']
+        sizes = [completed, pending]
+        colors = ['#2E8B57', '#A83232'] 
+
+        ax.pie(
+            sizes, 
+            labels=labels, 
+            colors=colors, 
+            autopct='%1.1f%%', 
+            startangle=90, 
+            textprops={'color': 'white', 'fontsize': 12, 'weight': 'bold'}
+        )
+        ax.axis('equal') 
+
+        canvas = FigureCanvasTkAgg(fig, master=self.main_frame)
+        canvas.draw()
+        canvas.get_tk_widget().pack(pady=20, expand=True)
 
     # ==========================================
     # TASKS VIEW
@@ -121,7 +149,7 @@ class Momentum(ctk.CTk):
         self.load_tasks_from_db()
 
     # ==========================================
-    # HABITS VIEW (NEW)
+    # HABITS VIEW
     # ==========================================
     def show_habits(self):
         self.clear_frame()
@@ -153,14 +181,12 @@ class Momentum(ctk.CTk):
             name_label = ctk.CTkLabel(row_frame, text=habit_name, font=("Arial", 16, "bold"))
             name_label.pack(side="left", padx=10, pady=10)
 
-            # Fire emoji logic for visual reward
             streak_text = f"🔥 Streak: {streak}" if streak > 0 else "Streak: 0"
             streak_color = "#FFA500" if streak > 0 else "gray"
             
             streak_label = ctk.CTkLabel(row_frame, text=streak_text, text_color=streak_color, font=("Arial", 14, "bold"))
             streak_label.pack(side="left", padx=20)
 
-            # Button Color and State Logic
             already_done_today = (last_completed == today_str)
             btn_text = "Done Today" if already_done_today else "Check In"
             btn_color = "#2E8B57" if already_done_today else ["#3B8ED0", "#1F6AA5"]
