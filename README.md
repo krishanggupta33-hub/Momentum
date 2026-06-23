@@ -10,9 +10,13 @@ You can also export your database
 
 How to Install & Run (WINDOWS ONLY)
 
-Navigate to Releases 
-Download the latest version
-And launch the app (For the first time it will create a local secure database on the same path)
+1.  Navigate to Releases
+
+2.  Download the latest version
+
+3.  And launch the app (For the first time it will create a local secure database on the same path)
+
+4. Important: Because this is an indie app, Windows SmartScreen might pop up. If it does, click "More info" and then click "Run anyway".
 
  Developed by Krishang Gupta
 
