@@ -1,4 +1,4 @@
-# Momentum
+# Momentum:Build Better Habits. Maintain Momentum.
 
 
 So momentum is a local Productivity Application It is offline and it runs on your machine 
