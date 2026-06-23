@@ -16,19 +16,16 @@ class Momentum(ctk.CTk):
         self.title("Momentum v3.0")
         self.geometry("1000x700")
 
-        # Global Timer State Variables
         self.timer_running = False
         self.time_left = 25 * 60  
         self.timer_id = None
 
-        # --- Sidebar Navigation ---
         self.sidebar = ctk.CTkFrame(self, width=200)
         self.sidebar.pack(side="left", fill="y")
 
         self.logo = ctk.CTkLabel(self.sidebar, text="Momentum", font=("Arial", 24, "bold"))
         self.logo.pack(pady=(20, 5))
 
-        # --- RPG GAMIFICATION UI ---
         self.level_label = ctk.CTkLabel(self.sidebar, text="Level 1", font=("Arial", 14, "bold"), text_color="#FFA500")
         self.level_label.pack()
         
@@ -36,7 +33,6 @@ class Momentum(ctk.CTk):
         self.xp_bar.set(0)
         self.xp_bar.pack(pady=(5, 20))
 
-        # Core Tools
         self.dashboard_btn = ctk.CTkButton(self.sidebar, text="Dashboard", command=self.show_dashboard)
         self.dashboard_btn.pack(pady=5, padx=10)
 
@@ -52,7 +48,6 @@ class Momentum(ctk.CTk):
         self.timer_btn = ctk.CTkButton(self.sidebar, text="Pomodoro", command=self.show_timer)
         self.timer_btn.pack(pady=5, padx=10)
 
-        # Version 3.0 Tools
         ctk.CTkLabel(self.sidebar, text="Advanced", text_color="gray", font=("Arial", 12)).pack(pady=(20, 5))
 
         self.focus_btn = ctk.CTkButton(self.sidebar, text="Focus Mode", fg_color="#EF553B", command=self.show_focus)
@@ -61,11 +56,9 @@ class Momentum(ctk.CTk):
         self.settings_btn = ctk.CTkButton(self.sidebar, text="Settings", fg_color="transparent", border_width=1, command=self.show_settings)
         self.settings_btn.pack(side="bottom", pady=20, padx=10)
 
-        # --- Main Content Display Area ---
         self.main_frame = ctk.CTkFrame(self)
         self.main_frame.pack(side="right", fill="both", expand=True, padx=10, pady=10)
 
-        # --- THE KRISHANG GUPTA BADGE ---
         self.badge = ctk.CTkLabel(self, text="By Krishang Gupta", font=("Arial", 12, "italic"), text_color="gray")
         self.badge.place(relx=0.98, rely=0.98, anchor="se")
 
@@ -86,17 +79,12 @@ class Momentum(ctk.CTk):
             widget.destroy()
 
     def update_profile_ui(self):
-        """Updates the sidebar XP bar and Level text."""
         xp, level = database.get_profile()
         self.level_label.configure(text=f"Level {level}")
         
-        # Calculate progress to the next level (100 XP per level)
         progress = (xp % 100) / 100.0
         self.xp_bar.set(progress)
 
-    # ==========================================
-    # DASHBOARD VIEW
-    # ==========================================
     def show_dashboard(self):
         self.clear_frame()
         
@@ -137,9 +125,6 @@ class Momentum(ctk.CTk):
         canvas.draw()
         canvas.get_tk_widget().pack(pady=20, expand=True)
 
-    # ==========================================
-    # TASKS VIEW
-    # ==========================================
     def show_tasks(self):
         self.clear_frame()
         title = ctk.CTkLabel(self.main_frame, text="Tasks", font=("Arial", 28, "bold"))
@@ -190,16 +175,13 @@ class Momentum(ctk.CTk):
 
     def ui_complete_task(self, task_id):
         database.complete_task(task_id)
-        self.update_profile_ui() # Refresh XP bar visually
+        self.update_profile_ui() 
         self.load_tasks_from_db()
 
     def ui_delete_task(self, task_id):
         database.delete_task(task_id)
         self.load_tasks_from_db()
 
-    # ==========================================
-    # HABITS VIEW
-    # ==========================================
     def show_habits(self):
         self.clear_frame()
         title = ctk.CTkLabel(self.main_frame, text="Habit Tracker", font=("Arial", 28, "bold"))
@@ -262,16 +244,13 @@ class Momentum(ctk.CTk):
 
     def ui_check_in_habit(self, habit_id):
         database.check_in_habit(habit_id)
-        self.update_profile_ui() # Refresh XP bar visually
+        self.update_profile_ui() 
         self.load_habits_from_db()
 
     def ui_delete_habit(self, habit_id):
         database.delete_habit(habit_id)
         self.load_habits_from_db()
 
-    # ==========================================
-    # GOALS VIEW
-    # ==========================================
     def show_goals(self):
         self.clear_frame()
         title = ctk.CTkLabel(self.main_frame, text="Long-Term Goals", font=("Arial", 28, "bold"))
@@ -349,16 +328,13 @@ class Momentum(ctk.CTk):
 
     def ui_update_goal(self, goal_id, amount):
         database.update_goal_progress(goal_id, amount)
-        self.update_profile_ui() # Refresh XP bar visually
+        self.update_profile_ui() 
         self.load_goals_from_db()
 
     def ui_delete_goal(self, goal_id):
         database.delete_goal(goal_id)
         self.load_goals_from_db()
 
-    # ==========================================
-    # SETTINGS & DATA BACKUP 
-    # ==========================================
     def show_settings(self):
         self.clear_frame()
         
@@ -386,12 +362,9 @@ class Momentum(ctk.CTk):
         filepath = filedialog.askopenfilename(filetypes=[("JSON Files", "*.json")])
         if filepath:
             database.import_data(filepath)
-            self.update_profile_ui() # Update level from imported data
+            self.update_profile_ui() 
             self.settings_feedback.configure(text=f"Data restored successfully from:\n{filepath}", text_color="#2E8B57")
 
-    # ==========================================
-    # TIMER & FOCUS MODE 
-    # ==========================================
     def show_timer(self):
         self.clear_frame()
         title = ctk.CTkLabel(self.main_frame, text="Pomodoro Timer", font=("Arial", 28, "bold"))
@@ -401,7 +374,7 @@ class Momentum(ctk.CTk):
     def show_focus(self):
         self.clear_frame()
         self.sidebar.pack_forget()
-        self.badge.place_forget() # Hide the badge in focus mode to reduce distraction
+        self.badge.place_forget() 
         
         exit_btn = ctk.CTkButton(self.main_frame, text="Exit Focus Mode", width=120, fg_color="#A83232", hover_color="#822525", command=self.exit_focus)
         exit_btn.pack(pady=10, anchor="ne", padx=20)
@@ -413,7 +386,7 @@ class Momentum(ctk.CTk):
 
     def exit_focus(self):
         self.sidebar.pack(side="left", fill="y")
-        self.badge.place(relx=0.98, rely=0.98, anchor="se") # Bring the badge back
+        self.badge.place(relx=0.98, rely=0.98, anchor="se") 
         self.show_timer()
 
     def render_timer_ui(self, font_size, button_width):
