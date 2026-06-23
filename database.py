@@ -38,7 +38,6 @@ def create_tables():
         )
     """)
 
-    # NEW: Profile table for Gamification XP
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS profile (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,7 +46,6 @@ def create_tables():
         )
     """)
 
-    # Initialize the profile row if it doesn't exist
     cursor.execute("SELECT COUNT(*) FROM profile")
     if cursor.fetchone()[0] == 0:
         cursor.execute("INSERT INTO profile (xp, level) VALUES (0, 1)")
@@ -55,9 +53,7 @@ def create_tables():
     conn.commit()
     conn.close()
 
-# ==========================================
-# GAMIFICATION LOGIC (NEW)
-# ==========================================
+
 def get_profile():
     conn = connect()
     cursor = conn.cursor()
@@ -74,16 +70,13 @@ def add_xp(amount):
     current_xp = cursor.fetchone()[0]
     
     new_xp = current_xp + amount
-    # Mathematical Leveling System: 1 Level per 100 XP
     new_level = (new_xp // 100) + 1 
     
     cursor.execute("UPDATE profile SET xp = ?, level = ? WHERE id = 1", (new_xp, new_level))
     conn.commit()
     conn.close()
 
-# ==========================================
-# TASKS LOGIC
-# ==========================================
+
 def add_task(task):
     conn = connect()
     cursor = conn.cursor()
@@ -110,25 +103,22 @@ def complete_task(task_id):
     conn = connect()
     cursor = conn.cursor()
     
-    # Check if we are completing or uncompleting to award XP properly
     cursor.execute("SELECT completed FROM tasks WHERE id = ?",(task_id,))
     is_completed = cursor.fetchone()[0]
     
-    if is_completed == 0: # Turning it ON
+    if is_completed == 0:
         cursor.execute("UPDATE tasks SET completed = 1 WHERE id = ?", (task_id,))
         conn.commit()
         conn.close()
-        add_xp(10) # 10 XP for a task
+        add_xp(10)
         return True
-    else: # Turning it OFF
+    else:
         cursor.execute("UPDATE tasks SET completed = 0 WHERE id = ?", (task_id,))
         conn.commit()
         conn.close()
         return False
 
-# ==========================================
-# HABITS LOGIC
-# ==========================================
+
 def add_habit(habit_name):
     conn = connect()
     cursor = conn.cursor()
@@ -184,11 +174,9 @@ def check_in_habit(habit_id):
     conn.close()
     
     if awarded_xp:
-        add_xp(15) # 15 XP for habit consistency
+        add_xp(15)
 
-# ==========================================
-# GOALS LOGIC
-# ==========================================
+
 def add_goal(goal_name, target_amount, deadline):
     conn = connect()
     cursor = conn.cursor()
@@ -229,7 +217,7 @@ def update_goal_progress(goal_id, amount_to_add):
     conn.close()
     
     if awarded_xp:
-        add_xp(20) # 20 XP for long-term goal progress
+        add_xp(20)
 
 def delete_goal(goal_id):
     conn = connect()
@@ -238,9 +226,7 @@ def delete_goal(goal_id):
     conn.commit()
     conn.close()
 
-# ==========================================
-# DASHBOARD STATS LOGIC
-# ==========================================
+
 def get_task_stats():
     conn = connect()
     cursor = conn.cursor()
@@ -254,9 +240,7 @@ def get_task_stats():
     conn.close()
     return completed, pending
 
-# ==========================================
-# DATA BACKUP & RESTORE LOGIC
-# ==========================================
+
 def export_data(filepath):
     conn = connect()
     cursor = conn.cursor()
