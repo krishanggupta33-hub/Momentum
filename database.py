@@ -1,8 +1,19 @@
 import sqlite3
 import json
+import os
 from datetime import date, timedelta
 
-DB_NAME = "momentum.db"
+
+USER_HOME = os.path.expanduser("~")
+
+APP_DIR = os.path.join(USER_HOME, "MomentumApp")
+
+
+if not os.path.exists(APP_DIR):
+    os.makedirs(APP_DIR)
+
+
+DB_NAME = os.path.join(APP_DIR, "momentum.db")
 
 def connect():
     return sqlite3.connect(DB_NAME)
@@ -38,6 +49,7 @@ def create_tables():
         )
     """)
 
+    
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS profile (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,6 +58,7 @@ def create_tables():
         )
     """)
 
+    
     cursor.execute("SELECT COUNT(*) FROM profile")
     if cursor.fetchone()[0] == 0:
         cursor.execute("INSERT INTO profile (xp, level) VALUES (0, 1)")
@@ -70,6 +83,7 @@ def add_xp(amount):
     current_xp = cursor.fetchone()[0]
     
     new_xp = current_xp + amount
+    # Mathematical Leveling System: 1 Level per 100 XP
     new_level = (new_xp // 100) + 1 
     
     cursor.execute("UPDATE profile SET xp = ?, level = ? WHERE id = 1", (new_xp, new_level))
